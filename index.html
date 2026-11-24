@@ -144,6 +144,15 @@
 
     .toggle-box { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 8px; border: 1px solid #e1e4e8; }
     .loading { text-align: center; color: #666; font-size: 0.9rem; padding: 8px; }
+        /* 通貨・為替レート入力欄 */
+    .amount-row { display: flex; gap: 8px; align-items: center; }
+    .amount-row select { width: 115px; flex-shrink: 0; margin: 4px 0 10px; }
+    .amount-row input { flex: 1; margin: 4px 0 10px; }
+    .rate-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; font-size: 0.85rem; }
+    .rate-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .rate-row input { width: 85px; margin: 0; padding: 6px 8px; font-size: 15px; text-align: right; }
+    .jpy-preview { margin-top: 6px; font-weight: bold; color: #b45309; font-size: 0.9rem; }
+
   </style>
 </head>
 <body>
@@ -180,8 +189,24 @@
     <label class="field-label">店名 / 全体の内容</label>
     <input type="text" id="itemInput" placeholder="例: スーパー、居酒屋、レンタカー">
 
-    <label class="field-label">支払合計金額（円）</label>
-    <input type="number" id="amountInput" inputmode="numeric" placeholder="例: 6000">
+        <label class="field-label">支払合計金額</label>
+    <div class="amount-row">
+      <select id="currencySelect" onchange="onCurrencyChange()">
+        <option value="JPY">🇯🇵 円 (JPY)</option>
+        <option value="PHP">🇵🇭 ペソ (PHP)</option>
+      </select>
+      <input type="number" id="amountInput" inputmode="decimal" step="any" placeholder="例: 6000" oninput="updateJpyPreview()">
+    </div>
+
+    <div id="phpRateBox" class="rate-box" style="display:none;">
+      <div class="rate-row">
+        <span>レート: 1 PHP =</span>
+        <input type="number" id="phpRateInput" inputmode="decimal" step="0.01" value="2.65" oninput="savePhpRate()">
+        <span>円</span>
+      </div>
+      <div id="jpyPreview" class="jpy-preview">換算額: 0円</div>
+    </div>
+
 
     <button type="button" class="btn-opt" id="toggleItemizedBtn" onclick="toggleItemizedMode()">
       📋 品物別に対象者を分ける（オプション）
@@ -308,9 +333,12 @@
       appPass = prompt('合言葉を入力してください') || '';
       if (appPass) localStorage.setItem('trip_app_pass', appPass);
     }
+    const savedRate = localStorage.getItem('trip_php_rate');
+    if (savedRate) document.getElementById('phpRateInput').value = savedRate;
     updateRoundingButtons();
     fetchData();
   };
+
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
