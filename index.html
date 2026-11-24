@@ -6,7 +6,7 @@
   <title>旅行割り勘・精算アプリ</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 12px; background: #f2f4f8; color: #222; padding-bottom: 40px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 12px; background: #f2f4f8; color: #222; padding-bottom: 96px; }
     .card { background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 14px; }
     h2 { margin: 0 0 12px; font-size: 1.05rem; color: #111; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     label.field-label { display: block; font-size: 0.85rem; font-weight: bold; color: #555; margin-top: 8px; }
@@ -59,7 +59,9 @@
     .summary-table th, .summary-table td { padding: 8px 6px; border-bottom: 1px solid #eee; text-align: right; }
     .summary-table th:first-child, .summary-table td:first-child { text-align: left; }
     .summary-table th { color: #555; font-size: 0.8rem; background: #f8fafc; }
-    .total-banner { background: #f8fafc; padding: 10px 12px; border-radius: 8px; font-size: 0.95rem; margin-bottom: 8px; display: flex; justify-content: space-between; border: 1px solid #e2e8f0; }
+    .total-banner { background: #f8fafc; padding: 10px 12px; border-radius: 8px; font-size: 0.95rem; margin-bottom: 8px; border: 1px solid #e2e8f0; }
+    .total-banner-main { display: flex; justify-content: space-between; align-items: center; }
+    .total-banner-sub { font-size: 0.78rem; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; }
 
     .history-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9rem; gap: 8px; }
     .history-item:last-child { border-bottom: none; }
@@ -67,13 +69,71 @@
     .edit-btn { width: auto; background: #0ea5e9; padding: 6px 10px; font-size: 0.8rem; margin: 0; }
     .del-btn { width: auto; background: #ff4d4f; padding: 6px 10px; font-size: 0.8rem; margin: 0; }
 
-    /* AIチャット */
-    .chat-box { max-height: 240px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px; }
-    .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 0.88rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+    /* アーカイブ履歴 */
+    .archive-item { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.88rem; color: #475569; }
+    .archive-item:last-child { border-bottom: none; }
+    .archive-badge { display: inline-block; background: #e2e8f0; color: #475569; font-size: 0.72rem; padding: 2px 7px; border-radius: 10px; margin-bottom: 4px; }
+
+    /* 右下固定 Gemini フローティングボタン */
+    .gemini-fab {
+      position: fixed;
+      right: 18px;
+      bottom: 20px;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      padding: 0;
+      margin: 0;
+      background: linear-gradient(135deg, #4285f4 0%, #8b5cf6 55%, #ec4899 100%);
+      box-shadow: 0 4px 14px rgba(66, 133, 244, 0.45);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 900;
+      transition: transform 0.15s ease;
+    }
+    .gemini-fab:active { transform: scale(0.92); }
+    .gemini-fab svg { width: 30px; height: 30px; fill: #fff; }
+
+    /* AIチャットポップアップ */
+    .chat-panel-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: none;
+      justify-content: center;
+      align-items: flex-end;
+      padding: 12px;
+      z-index: 950;
+    }
+    .chat-panel {
+      background: #fff;
+      width: 100%;
+      max-width: 540px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+      display: flex;
+      flex-direction: column;
+      max-height: 75vh;
+    }
+    .chat-header {
+      background: linear-gradient(135deg, #4285f4 0%, #8b5cf6 100%);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      font-size: 0.95rem;
+    }
+    .chat-close-btn { width: auto; background: rgba(255,255,255,0.22); color: #fff; padding: 4px 10px; margin: 0; font-size: 0.85rem; border-radius: 6px; }
+    .chat-box { flex: 1; min-height: 220px; max-height: 50vh; overflow-y: auto; background: #f8fafc; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .chat-msg { max-width: 85%; padding: 9px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
     .chat-user { align-self: flex-end; background: #0066cc; color: #fff; border-bottom-right-radius: 2px; }
     .chat-ai { align-self: flex-start; background: #fff; color: #222; border: 1px solid #cbd5e1; border-bottom-left-radius: 2px; }
-    .chat-input-row { display: flex; gap: 6px; }
-    .chat-input-row input { flex: 1; margin: 0; padding: 10px; font-size: 15px; }
+    .chat-input-row { display: flex; gap: 6px; padding: 10px; background: #fff; border-top: 1px solid #e2e8f0; }
+    .chat-input-row input { flex: 1; margin: 0; padding: 10px; font-size: 16px; }
     .chat-input-row button { width: auto; margin: 0; padding: 0 16px; flex-shrink: 0; }
 
     /* 編集モーダル */
@@ -149,22 +209,10 @@
     <button id="submitBtn" onclick="addExpense()">スプレッドシートに保存</button>
   </div>
 
-  <!-- 3. AIアシスタント（チャットで修正・質問） -->
-  <div class="card">
-    <h2>🤖 AIアシスタント（履歴の修正・質問）</h2>
-    <div id="chatBox" class="chat-box">
-      <div class="chat-msg chat-ai">「さっきの居酒屋からBを外して」「コンビニの支払者をAにして」「今いくら使った？」のように話しかけてください。</div>
-    </div>
-    <div class="chat-input-row">
-      <input type="text" id="chatInput" placeholder="例: 居酒屋の対象からBを外して" onkeydown="if(event.key==='Enter') sendAiChat()">
-      <button id="chatSendBtn" onclick="sendAiChat()">送信</button>
-    </div>
-  </div>
-
-  <!-- 4. 精算結果 -->
+  <!-- 3. 精算結果（未清算分のみ） -->
   <div class="card">
     <h2>
-      <span>精算結果</span>
+      <span>精算結果（残りの支払い）</span>
       <div class="round-toggle">
         <button type="button" class="round-btn active" id="roundBtn1" onclick="setRoundingUnit(1)">1円単位</button>
         <button type="button" class="round-btn" id="roundBtn100" onclick="setRoundingUnit(100)">100円単位</button>
@@ -175,16 +223,49 @@
     <button type="button" class="btn-archive" id="archiveTripBtn" onclick="archiveTripExpenses()">📦 清算完了（アーカイブへ退避）</button>
   </div>
 
-  <!-- 5. 1人あたりの旅行総出費サマリー -->
+  <!-- 4. 旅行総出費サマリー（未清算＋アーカイブ合算） -->
   <div class="card">
-    <h2>旅行総出費サマリー</h2>
+    <h2>旅行総出費サマリー（累計）</h2>
     <div id="summaryBox"></div>
   </div>
 
-  <!-- 6. 支払い履歴 -->
+  <!-- 5. 支払い履歴（未清算） -->
   <div class="card">
-    <h2>支払い履歴</h2>
+    <h2>支払い履歴（未清算）</h2>
     <div id="historyList"></div>
+  </div>
+
+  <!-- 6. 支払い履歴アーカイブ（清算済み） -->
+  <div class="card">
+    <h2>
+      <span id="archiveTitle">📦 支払い履歴アーカイブ（0件）</span>
+      <button type="button" class="btn-sub" id="toggleArchiveBtn" onclick="toggleArchiveList()">開く</button>
+    </h2>
+    <div id="archiveList" style="display:none;"></div>
+  </div>
+
+  <!-- 右下固定 Gemini AIチャット起動ボタン -->
+  <button type="button" class="gemini-fab" aria-label="AIチャットを開く" onclick="openChatPanel()">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2C12.3 7.2 16.8 11.7 22 12C16.8 12.3 12.3 16.8 12 22C11.7 16.8 7.2 12.3 2 12C7.2 11.7 11.7 7.2 12 2Z"/>
+    </svg>
+  </button>
+
+  <!-- AIチャットポップアップ -->
+  <div id="chatOverlay" class="chat-panel-overlay" onclick="if(event.target===this) closeChatPanel()">
+    <div class="chat-panel">
+      <div class="chat-header">
+        <span>✦ Gemini AIアシスタント</span>
+        <button type="button" class="chat-close-btn" onclick="closeChatPanel()">✕ 閉じる</button>
+      </div>
+      <div id="chatBox" class="chat-box">
+        <div class="chat-msg chat-ai">「さっきの居酒屋からBを外して」「コンビニの支払者をAにして」「アーカイブ込みで今いくら使った？」のように話しかけてください。</div>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="修正や質問を入力..." onkeydown="if(event.key==='Enter') sendAiChat()">
+        <button id="chatSendBtn" onclick="sendAiChat()">送信</button>
+      </div>
+    </div>
   </div>
 
   <!-- 履歴編集モーダル -->
@@ -212,6 +293,7 @@
   const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbygks_2kWVuE7GbKGkqyPgWN58GRceDCJ-Fozp0vJskX5wv2e8xMg5gTTfjtz6kUnLa/exec';
 
   let allRecords = [];
+  let allArchives = [];
   let tripMembersMap = {};
   let appPass = '';
   let isItemizedMode = false;
@@ -232,6 +314,24 @@
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  function openChatPanel() {
+    document.getElementById('chatOverlay').style.display = 'flex';
+    const box = document.getElementById('chatBox');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function closeChatPanel() {
+    document.getElementById('chatOverlay').style.display = 'none';
+  }
+
+  function toggleArchiveList() {
+    const list = document.getElementById('archiveList');
+    const btn = document.getElementById('toggleArchiveBtn');
+    const isHidden = list.style.display === 'none';
+    list.style.display = isHidden ? 'block' : 'none';
+    btn.innerText = isHidden ? '閉じる' : '開く';
   }
 
   function setRoundingUnit(unit) {
@@ -364,9 +464,11 @@
       }
 
       allRecords = data.records;
+      allArchives = Array.isArray(data.archives) ? data.archives : [];
       tripMembersMap = data.trips || {};
 
-      allRecords.forEach(r => {
+      // 未清算・アーカイブのどちらかにしかない旅行名も補完
+      [...allRecords, ...allArchives].forEach(r => {
         if (r.TripName && !tripMembersMap[r.TripName]) {
           const inferred = new Set([r.Payer, ...String(r.Participants).split(',')].map(s => s.trim()).filter(Boolean));
           tripMembersMap[r.TripName] = [...inferred];
@@ -659,11 +761,11 @@
 
     const count = allRecords.filter(r => r.TripName === tripName).length;
     if (count === 0) {
-      alert('アーカイブする支払い履歴がありません');
+      alert('アーカイブする未清算の支払い履歴がありません');
       return;
     }
 
-    if (!confirm(`「${tripName}」の支払い履歴（${count}件）を Archive シートへ退避し、清算完了にしますか？\n（データは消えずスプレッドシートの Archive シートに残ります）`)) {
+    if (!confirm(`「${tripName}」の未清算履歴（${count}件）をアーカイブへ退避して清算完了にしますか？\n（総出費サマリーと最下部のアーカイブ欄には引き続き残ります）`)) {
       return;
     }
 
@@ -678,7 +780,7 @@
         body: JSON.stringify({ pass: appPass, action: 'archiveTrip', tripName })
       });
       await fetchData();
-      alert(`「${tripName}」の履歴を Archive シートへ退避しました！`);
+      alert(`「${tripName}」の履歴をアーカイブへ退避しました！`);
     } catch (err) {
       alert('アーカイブ処理に失敗しました');
     } finally {
@@ -696,7 +798,7 @@
     let text = `【${tripName} 精算結果${unitLabel}】\n`;
 
     if (lastRenderedSettlements.length === 0) {
-      text += '精算はありません。\n';
+      text += '残りの精算はありません。\n';
     } else {
       lastRenderedSettlements.forEach(s => {
         text += `・${s.from} → ${s.to}：${s.amount.toLocaleString()}円\n`;
@@ -704,7 +806,7 @@
     }
 
     if (lastRenderedSummary.length > 0) {
-      text += `\n【1人あたりの総出費】（全体合計：${Math.round(lastTripTotal).toLocaleString()}円）\n`;
+      text += `\n【旅行累計の総出費】（全体合計：${Math.round(lastTripTotal).toLocaleString()}円）\n`;
       lastRenderedSummary.forEach(u => {
         text += `・${u.person}：${Math.round(u.share).toLocaleString()}円（立替 ${Math.round(u.paid).toLocaleString()}円）\n`;
       });
@@ -752,6 +854,7 @@
 
     try {
       const currentRecords = allRecords.filter(r => r.TripName === tripName);
+      const currentArchives = allArchives.filter(r => r.TripName === tripName);
       const res = await fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -761,6 +864,7 @@
           tripName,
           members: tripMembersMap[tripName] || [],
           records: currentRecords,
+          archives: currentArchives,
           message
         })
       });
@@ -782,13 +886,15 @@
     }
   }
 
-  // ===== 描画処理（履歴・サマリー・精算） =====
+  // ===== 描画処理（精算＝未清算のみ ／ サマリー＝未清算＋アーカイブ） =====
   function renderCurrentTrip() {
     const tripName = document.getElementById('tripSelect').value;
     const records = allRecords.filter(r => r.TripName === tripName);
+    const archives = allArchives.filter(r => r.TripName === tripName);
+    const combined = [...records, ...archives];
     const members = tripMembersMap[tripName] || [];
 
-    // 1. 履歴
+    // 1. 未清算の支払い履歴
     const historyEl = document.getElementById('historyList');
     historyEl.innerHTML = records.length ? records.map(r => `
       <div class="history-item">
@@ -801,15 +907,12 @@
           <button class="del-btn" onclick="deleteExpense('${escapeHtml(r.ID)}')">削除</button>
         </div>
       </div>
-    `).join('') : '<p style="color:#666; font-size:0.9rem;">まだ記録がありません</p>';
+    `).join('') : '<p style="color:#666; font-size:0.9rem;">未清算の記録はありません</p>';
 
-    // 2. 収支・総出費計算
-    const balances = {};
-    const paidMap = {};
-    const shareMap = {};
-    let totalSpent = 0;
-
-    members.forEach(m => { balances[m] = 0; paidMap[m] = 0; shareMap[m] = 0; });
+    // 2. 精算ロジック（未清算 records のみで計算）
+    const activeBalances = {};
+    let activeTotal = 0;
+    members.forEach(m => { activeBalances[m] = 0; });
 
     records.forEach(r => {
       const amount = Number(r.Amount);
@@ -817,58 +920,16 @@
       const targets = String(r.Participants).split(',').map(s => s.trim()).filter(Boolean);
       if (targets.length === 0) return;
 
-      totalSpent += amount;
+      activeTotal += amount;
       const splitAmount = amount / targets.length;
-      balances[payer] = (balances[payer] || 0) + amount;
-      paidMap[payer] = (paidMap[payer] || 0) + amount;
+      activeBalances[payer] = (activeBalances[payer] || 0) + amount;
       targets.forEach(t => {
-        balances[t] = (balances[t] || 0) - splitAmount;
-        shareMap[t] = (shareMap[t] || 0) + splitAmount;
+        activeBalances[t] = (activeBalances[t] || 0) - splitAmount;
       });
     });
 
-    // 3. 旅行総出費サマリー描画
-    lastTripTotal = totalSpent;
-    const allPeople = Object.keys(balances);
-    lastRenderedSummary = allPeople.map(p => ({
-      person: p,
-      paid: paidMap[p] || 0,
-      share: shareMap[p] || 0
-    }));
-
-    const summaryEl = document.getElementById('summaryBox');
-    if (records.length === 0) {
-      summaryEl.innerHTML = '<p style="color:#666; font-size:0.9rem;">まだデータがありません</p>';
-    } else {
-      summaryEl.innerHTML = `
-        <div class="total-banner">
-          <span>旅行全体の合計出費</span>
-          <strong>${Math.round(totalSpent).toLocaleString()}円</strong>
-        </div>
-        <table class="summary-table">
-          <thead>
-            <tr>
-              <th>メンバー</th>
-              <th>実質負担額</th>
-              <th>立替済</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lastRenderedSummary.map(u => `
-              <tr>
-                <td><strong>${escapeHtml(u.person)}</strong></td>
-                <td>${Math.round(u.share).toLocaleString()}円</td>
-                <td style="color:#64748b;">${Math.round(u.paid).toLocaleString()}円</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
-    }
-
-    // 4. 精算ロジック（端数丸め対応）
     let debtors = [], creditors = [];
-    for (const [person, bal] of Object.entries(balances)) {
+    for (const [person, bal] of Object.entries(activeBalances)) {
       if (bal < -1) debtors.push({ person, amount: -bal });
       if (bal > 1) creditors.push({ person, amount: bal });
     }
@@ -901,7 +962,91 @@
             ${escapeHtml(s.from)} → ${escapeHtml(s.to)} に <strong>${s.amount.toLocaleString()}円</strong>
           </div>
         `).join('')
-      : '<p style="color:#666; font-size:0.9rem;">精算は完了しています（またはデータがありません）</p>';
+      : '<p style="color:#666; font-size:0.9rem;">残りの精算はありません</p>';
+
+    // 3. 旅行総出費サマリー（未清算 records ＋ アーカイブ archives の合算）
+    const paidMap = {};
+    const shareMap = {};
+    let totalSpent = 0;
+    let archivedTotal = 0;
+    const peopleSet = new Set(members);
+
+    combined.forEach(r => {
+      const amount = Number(r.Amount);
+      const payer = String(r.Payer).trim();
+      const targets = String(r.Participants).split(',').map(s => s.trim()).filter(Boolean);
+      if (targets.length === 0) return;
+
+      totalSpent += amount;
+      peopleSet.add(payer);
+      const splitAmount = amount / targets.length;
+      paidMap[payer] = (paidMap[payer] || 0) + amount;
+      targets.forEach(t => {
+        peopleSet.add(t);
+        shareMap[t] = (shareMap[t] || 0) + splitAmount;
+      });
+    });
+
+    archives.forEach(r => { archivedTotal += Number(r.Amount) || 0; });
+
+    lastTripTotal = totalSpent;
+    lastRenderedSummary = [...peopleSet].map(p => ({
+      person: p,
+      paid: paidMap[p] || 0,
+      share: shareMap[p] || 0
+    }));
+
+    const summaryEl = document.getElementById('summaryBox');
+    if (combined.length === 0) {
+      summaryEl.innerHTML = '<p style="color:#666; font-size:0.9rem;">まだデータがありません</p>';
+    } else {
+      summaryEl.innerHTML = `
+        <div class="total-banner">
+          <div class="total-banner-main">
+            <span>旅行累計の合計出費</span>
+            <strong>${Math.round(totalSpent).toLocaleString()}円</strong>
+          </div>
+          <div class="total-banner-sub">
+            <span>未清算: ${Math.round(activeTotal).toLocaleString()}円</span>
+            <span>アーカイブ済: ${Math.round(archivedTotal).toLocaleString()}円</span>
+          </div>
+        </div>
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>メンバー</th>
+              <th>実質負担額</th>
+              <th>立替済</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lastRenderedSummary.map(u => `
+              <tr>
+                <td><strong>${escapeHtml(u.person)}</strong></td>
+                <td>${Math.round(u.share).toLocaleString()}円</td>
+                <td style="color:#64748b;">${Math.round(u.paid).toLocaleString()}円</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // 4. 支払い履歴アーカイブ（清算済み）
+    document.getElementById('archiveTitle').innerText = `📦 支払い履歴アーカイブ（${archives.length}件）`;
+    const archiveEl = document.getElementById('archiveList');
+    if (archives.length === 0) {
+      archiveEl.innerHTML = '<p style="color:#666; font-size:0.9rem;">アーカイブされた履歴はありません</p>';
+    } else {
+      // 新しくアーカイブされたものが上に来るよう逆順表示
+      archiveEl.innerHTML = [...archives].reverse().map(r => `
+        <div class="archive-item">
+          <span class="archive-badge">清算済 ${escapeHtml(r.ArchivedAt || r.Date || '')}</span><br>
+          <strong>${escapeHtml(r.Item)}</strong> (${Number(r.Amount).toLocaleString()}円)<br>
+          <small>支払: ${escapeHtml(r.Payer)} ／ 対象: ${escapeHtml(r.Participants)}</small>
+        </div>
+      `).join('');
+    }
   }
 </script>
 </body>
