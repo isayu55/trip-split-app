@@ -19,9 +19,9 @@
     button:active { opacity: 0.85; }
     button:disabled { background: #99c2ff; }
     .btn-green { background: #28a745; }
+    .btn-scan { background: #6f42c1; margin-bottom: 12px; }
     .btn-sub { width: auto; padding: 6px 12px; font-size: 0.8rem; background: #6c757d; margin: 0; }
     
-    /* 対象者チェックボックス（スマホで押しやすいチップ型） */
     .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0 14px; }
     .check-chip {
       display: flex; align-items: center; padding: 10px 12px; border: 1.5px solid #d0d7de; border-radius: 8px; background: #fafbfc; cursor: pointer; font-size: 15px; user-select: none;
@@ -29,7 +29,6 @@
     .check-chip input { width: 18px; height: 18px; margin-right: 8px; accent-color: #0066cc; }
     .check-chip:has(input:checked) { border-color: #0066cc; background: #eef6ff; font-weight: bold; }
 
-    /* 精算結果・履歴 */
     .settlement-item { background: #eef6ff; padding: 12px; border-left: 4px solid #0066cc; border-radius: 6px; margin-bottom: 8px; font-size: 0.95rem; }
     .history-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9rem; gap: 8px; }
     .history-item:last-child { border-bottom: none; }
@@ -60,6 +59,12 @@
   <!-- 2. 支払いの記録 -->
   <div class="card">
     <h2>支払いを記録</h2>
+
+    <!-- レシート読取ボタン（非表示のfile inputをボタンから起動） -->
+    <input type="file" id="receiptInput" accept="image/*" style="display:none;" onchange="handleReceiptUpload(event)">
+    <button type="button" class="btn-scan" id="scanBtn" onclick="document.getElementById('receiptInput').click()">
+      📷 レシートから自動入力（カメラ / 写真）
+    </button>
     
     <label class="field-label">支払った人</label>
     <select id="payerSelect"></select>
@@ -96,7 +101,7 @@
   const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzlx2nN_9JaDu5BDkb_ksfKIR1zZlyaAX5iH_mubhPMWK_fC8RO1IWJzZDDzw2U15Rr/exec';
   
   let allRecords = [];
-  let tripMembersMap = {}; // { "旅行名": ["メンバー1", "メンバー2"] }
+  let tripMembersMap = {};
   let appPass = '';
 
   window.onload = () => {
@@ -107,6 +112,77 @@
     }
     fetchData();
   };
+
+  // レシート画像の圧縮とGemini API解析リクエスト
+  async function handleReceiptUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const scanBtn = document.getElementById('scanBtn');
+    scanBtn.disabled = true;
+    scanBtn.innerText = '⏳ レシートを解析中...';
+
+    try {
+      const base64Data = await resizeImageToBase64(file, 800);
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          pass: appPass,
+          action: 'scanReceipt',
+          imageBase64: base64Data
+        })
+      });
+      const result = await res.json();
+
+      if (result.error) {
+        alert(result.error);
+      } else {
+        if (result.item) document.getElementById('itemInput').value = result.item;
+        if (result.amount) document.getElementById('amountInput').value = result.amount;
+      }
+    } catch (err) {
+      alert('画像の送信・解析に失敗しました');
+    } finally {
+      scanBtn.disabled = false;
+      scanBtn.innerText = '📷 レシートから自動入力（カメラ / 写真）';
+      event.target.value = ''; // 同じ画像を再選択できるようにリセット
+    }
+  }
+
+  // スマホ写真を軽量JPEG(Base64)に変換する関数
+  function resizeImageToBase64(file, maxSide) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width;
+          let h = img.height;
+          if (w > maxSide || h > maxSide) {
+            if (w > h) {
+              h = Math.round(h * maxSide / w);
+              w = maxSide;
+            } else {
+              w = Math.round(w * maxSide / h);
+              h = maxSide;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          resolve(dataUrl.split(',')[1]); // "data:image/jpeg;base64," を除いた本体を返す
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
 
   async function fetchData() {
     try {
@@ -128,7 +204,6 @@
       allRecords = data.records;
       tripMembersMap = data.trips || {};
 
-      // 過去の履歴にあってTripsシートに未登録の旅行も補完
       allRecords.forEach(r => {
         if (r.TripName && !tripMembersMap[r.TripName]) {
           const inferred = new Set([r.Payer, ...String(r.Participants).split(',')].map(s => s.trim()).filter(Boolean));
@@ -211,17 +286,14 @@
     const tripName = document.getElementById('tripSelect').value;
     const members = tripMembersMap[tripName] || [];
 
-    // 編集欄にも現在の値を同期
     document.getElementById('editTripName').value = tripName;
     document.getElementById('editTripMembers').value = members.join(',');
 
-    // 「支払った人」プルダウンの更新
     const payerSelect = document.getElementById('payerSelect');
     payerSelect.innerHTML = members.length
       ? members.map(m => `<option value="${m}">${m}</option>`).join('')
       : '<option value="">先にメンバーを登録してください</option>';
 
-    // 「対象者」チェックボックスの更新（デフォルト全員チェック）
     const grid = document.getElementById('participantsGrid');
     grid.innerHTML = members.map(m => `
       <label class="check-chip">
@@ -283,7 +355,6 @@
 
       document.getElementById('itemInput').value = '';
       document.getElementById('amountInput').value = '';
-      // 対象者は全員チェック状態にリセット
       document.querySelectorAll('input[name="participant"]').forEach(b => b.checked = true);
       await fetchData();
     } catch (err) {
@@ -312,7 +383,6 @@
     const tripName = document.getElementById('tripSelect').value;
     const records = allRecords.filter(r => r.TripName === tripName);
 
-    // 履歴の描画
     const historyEl = document.getElementById('historyList');
     historyEl.innerHTML = records.length ? records.map(r => `
       <div class="history-item">
@@ -324,7 +394,6 @@
       </div>
     `).join('') : '<p style="color:#666; font-size:0.9rem;">まだ記録がありません</p>';
 
-    // 精算ロジック
     const balances = {};
     records.forEach(r => {
       const amount = Number(r.Amount);
