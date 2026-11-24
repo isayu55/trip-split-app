@@ -852,35 +852,43 @@
     sendBtn.disabled = true;
     sendBtn.innerText = '...';
 
+    // 25秒でタイムアウトさせ、固まるのを防ぐ
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
     try {
-      const currentRecords = allRecords.filter(r => r.TripName === tripName);
-      const currentArchives = allArchives.filter(r => r.TripName === tripName);
       const res = await fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
+        signal: controller.signal,
         body: JSON.stringify({
           pass: appPass,
           action: 'aiChat',
           tripName,
           members: tripMembersMap[tripName] || [],
-          records: currentRecords,
-          archives: currentArchives,
+          allRecords: allRecords,
+          allArchives: allArchives,
           message
         })
       });
       const result = await res.json();
 
       if (result.error) {
-        appendChatBubble('ai', 'エラー: ' + result.error);
+        appendChatBubble('ai', 'すみません、うまく処理できませんでした。\n（' + result.error + '）');
       } else {
-        appendChatBubble('ai', result.reply || '完了しました。');
+        appendChatBubble('ai', result.reply || 'わかりませんでした。もう少し具体的に教えてください。');
         if (result.mutated) {
           await fetchData();
         }
       }
     } catch (err) {
-      appendChatBubble('ai', '通信エラーが発生しました。');
+      if (err.name === 'AbortError') {
+        appendChatBubble('ai', '応答に時間がかかりすぎたため中断しました。対応できない内容か通信が混み合っている可能性があります。言い方を変えてもう一度お試しください。');
+      } else {
+        appendChatBubble('ai', 'すみません、通信エラーが発生して回答できませんでした。');
+      }
     } finally {
+      clearTimeout(timeoutId);
       sendBtn.disabled = false;
       sendBtn.innerText = '送信';
     }
