@@ -51,17 +51,36 @@
   
   let allRecords = [];
   let customTrips = [];
+  let appPass = '';
 
-  window.onload = fetchRecords;
+  window.onload = () => {
+    appPass = localStorage.getItem('trip_app_pass');
+    if (!appPass) {
+      appPass = prompt('合言葉を入力してください') || '';
+      if (appPass) {
+        localStorage.setItem('trip_app_pass', appPass);
+      }
+    }
+    fetchRecords();
+  };
 
   async function fetchRecords() {
     try {
-      const res = await fetch(GAS_API_URL);
-      allRecords = await res.json();
+      const res = await fetch(`${GAS_API_URL}?pass=${encodeURIComponent(appPass)}`);
+      const data = await res.json();
+
+      if (data.error === 'Unauthorized') {
+        alert('合言葉が違います。もう一度入力してください。');
+        localStorage.removeItem('trip_app_pass');
+        location.reload();
+        return;
+      }
+
+      allRecords = data;
       updateTripDropdown();
       renderCurrentTrip();
     } catch (err) {
-      document.getElementById('settlementList').innerText = 'データの取得に失敗しました。URLを確認してください。';
+      document.getElementById('settlementList').innerText = 'データの取得に失敗しました。URLまたは通信環境を確認してください。';
     }
   }
 
@@ -105,6 +124,7 @@
     btn.innerText = '保存中...';
 
     const payload = {
+      pass: appPass,
       action: 'add',
       tripName,
       date: new Date().toLocaleDateString('ja-JP'),
@@ -114,27 +134,52 @@
       participants
     };
 
-    await fetch(GAS_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload)
-    });
+    try {
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
 
-    document.getElementById('itemInput').value = '';
-    document.getElementById('amountInput').value = '';
-    btn.disabled = false;
-    btn.innerText = 'スプレッドシートに保存';
-    await fetchRecords();
+      if (result.error === 'Unauthorized') {
+        alert('合言葉が違います。');
+        localStorage.removeItem('trip_app_pass');
+        location.reload();
+        return;
+      }
+
+      document.getElementById('itemInput').value = '';
+      document.getElementById('amountInput').value = '';
+      await fetchRecords();
+    } catch (err) {
+      alert('保存に失敗しました。');
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'スプレッドシートに保存';
+    }
   }
 
   async function deleteExpense(id) {
     if (!confirm('この記録を削除しますか？')) return;
-    await fetch(GAS_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'delete', id })
-    });
-    await fetchRecords();
+    try {
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ pass: appPass, action: 'delete', id })
+      });
+      const result = await res.json();
+
+      if (result.error === 'Unauthorized') {
+        alert('合言葉が違います。');
+        localStorage.removeItem('trip_app_pass');
+        location.reload();
+        return;
+      }
+      await fetchRecords();
+    } catch (err) {
+      alert('削除に失敗しました。');
+    }
   }
 
   function renderCurrentTrip() {
