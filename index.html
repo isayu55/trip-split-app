@@ -6,24 +6,31 @@
   <title>旅行割り勘・精算アプリ</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 12px; background: #f2f4f8; color: #222; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 12px; background: #f2f4f8; color: #222; padding-bottom: 40px; }
     .card { background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 14px; }
-    h2 { margin: 0 0 12px; font-size: 1.05rem; color: #111; display: flex; justify-content: space-between; align-items: center; }
+    h2 { margin: 0 0 12px; font-size: 1.05rem; color: #111; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     label.field-label { display: block; font-size: 0.85rem; font-weight: bold; color: #555; margin-top: 8px; }
     input[type="text"], input[type="number"], select {
       width: 100%; padding: 12px; margin: 4px 0 10px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 16px; background: #fff;
     }
     button {
-      width: 100%; padding: 13px; margin: 6px 0; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; color: #fff; background: #0066cc; cursor: pointer; touch-action: manipulation;
+      width: 100%; padding: 13px; margin: 6px 0; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; color: #fff; background: #0066cc; cursor: pointer; touch-action: manipulation;
     }
     button:active { opacity: 0.85; }
-    button:disabled { background: #99c2ff; }
+    button:disabled { background: #99c2ff; cursor: not-allowed; }
     .btn-green { background: #28a745; }
+    .btn-line { background: #06C755; }
     .btn-scan { background: #6f42c1; margin-bottom: 10px; }
+    .btn-archive { background: #64748b; margin-top: 10px; }
     .btn-opt { background: #f0f4f8; color: #0066cc; border: 1.5px solid #0066cc; font-size: 0.9rem; padding: 10px; margin: 8px 0; }
     .btn-sub { width: auto; padding: 6px 12px; font-size: 0.8rem; background: #6c757d; margin: 0; }
-    
-    /* 通常の対象者チップ */
+
+    /* 端数丸め切り替えセグメント */
+    .round-toggle { display: inline-flex; background: #e2e8f0; border-radius: 8px; padding: 3px; }
+    .round-btn { width: auto; padding: 5px 10px; margin: 0; font-size: 0.78rem; border-radius: 6px; background: transparent; color: #475569; font-weight: bold; }
+    .round-btn.active { background: #0066cc; color: #fff; }
+
+    /* 対象者チップ */
     .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0 14px; }
     .check-chip {
       display: flex; align-items: center; padding: 10px 12px; border: 1.5px solid #d0d7de; border-radius: 8px; background: #fafbfc; cursor: pointer; font-size: 15px; user-select: none;
@@ -31,7 +38,7 @@
     .check-chip input { width: 18px; height: 18px; margin-right: 8px; accent-color: #0066cc; }
     .check-chip:has(input:checked) { border-color: #0066cc; background: #eef6ff; font-weight: bold; }
 
-    /* 品物別オプションカード */
+    /* 品物別オプション */
     .itemized-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin: 10px 0 14px; }
     .line-item-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
     .line-item-top { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
@@ -46,11 +53,35 @@
     .mini-chip:has(input:checked) { background: #0066cc; color: #fff; border-color: #0066cc; font-weight: bold; }
     .tax-note { font-size: 0.8rem; color: #475569; background: #e2e8f0; padding: 8px; border-radius: 6px; margin-top: 6px; }
 
-    /* 精算結果・履歴 */
+    /* 精算結果・総出費サマリー・履歴 */
     .settlement-item { background: #eef6ff; padding: 12px; border-left: 4px solid #0066cc; border-radius: 6px; margin-bottom: 8px; font-size: 0.95rem; }
+    .summary-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 6px; }
+    .summary-table th, .summary-table td { padding: 8px 6px; border-bottom: 1px solid #eee; text-align: right; }
+    .summary-table th:first-child, .summary-table td:first-child { text-align: left; }
+    .summary-table th { color: #555; font-size: 0.8rem; background: #f8fafc; }
+    .total-banner { background: #f8fafc; padding: 10px 12px; border-radius: 8px; font-size: 0.95rem; margin-bottom: 8px; display: flex; justify-content: space-between; border: 1px solid #e2e8f0; }
+
     .history-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9rem; gap: 8px; }
     .history-item:last-child { border-bottom: none; }
-    .del-btn { width: auto; background: #ff4d4f; padding: 6px 10px; font-size: 0.8rem; margin: 0; flex-shrink: 0; }
+    .history-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .edit-btn { width: auto; background: #0ea5e9; padding: 6px 10px; font-size: 0.8rem; margin: 0; }
+    .del-btn { width: auto; background: #ff4d4f; padding: 6px 10px; font-size: 0.8rem; margin: 0; }
+
+    /* AIチャット */
+    .chat-box { max-height: 240px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px; }
+    .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 0.88rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+    .chat-user { align-self: flex-end; background: #0066cc; color: #fff; border-bottom-right-radius: 2px; }
+    .chat-ai { align-self: flex-start; background: #fff; color: #222; border: 1px solid #cbd5e1; border-bottom-left-radius: 2px; }
+    .chat-input-row { display: flex; gap: 6px; }
+    .chat-input-row input { flex: 1; margin: 0; padding: 10px; font-size: 15px; }
+    .chat-input-row button { width: auto; margin: 0; padding: 0 16px; flex-shrink: 0; }
+
+    /* 編集モーダル */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; padding: 16px; z-index: 1000; }
+    .modal-content { background: #fff; width: 100%; max-width: 500px; border-radius: 12px; padding: 18px; max-height: 90vh; overflow-y: auto; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-cancel { background: #94a3b8; }
+
     .toggle-box { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 8px; border: 1px solid #e1e4e8; }
     .loading { text-align: center; color: #666; font-size: 0.9rem; padding: 8px; }
   </style>
@@ -67,7 +98,7 @@
 
     <div id="tripEditor" class="toggle-box" style="display:none;">
       <label class="field-label">旅行名</label>
-      <input type="text" id="editTripName" placeholder="例: 2026年11月 横浜旅行">
+      <input type="text" id="editTripName" placeholder="例: 2026年11月 熱海旅行">
       <label class="field-label">参加メンバー（カンマ区切り）</label>
       <input type="text" id="editTripMembers" placeholder="例: 勇真,Aさん,Bさん">
       <button class="btn-green" id="saveTripBtn" onclick="saveTripSettings()">この旅行・メンバーを保存</button>
@@ -82,7 +113,7 @@
     <button type="button" class="btn-scan" id="scanBtn" onclick="document.getElementById('receiptInput').click()">
       📷 レシートから自動入力（カメラ / 写真）
     </button>
-    
+
     <label class="field-label">支払った人</label>
     <select id="payerSelect"></select>
 
@@ -92,12 +123,10 @@
     <label class="field-label">支払合計金額（円）</label>
     <input type="number" id="amountInput" inputmode="numeric" placeholder="例: 6000">
 
-    <!-- 品物別オプション切り替えボタン -->
     <button type="button" class="btn-opt" id="toggleItemizedBtn" onclick="toggleItemizedMode()">
       📋 品物別に対象者を分ける（オプション）
     </button>
 
-    <!-- 通常モード：一括対象者選択 -->
     <div id="bulkParticipantsSection">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
         <label class="field-label" style="margin:0;">誰の分？（対象者）</label>
@@ -106,7 +135,6 @@
       <div id="participantsGrid" class="checkbox-grid"></div>
     </div>
 
-    <!-- オプションモード：品物別リスト -->
     <div id="itemizedSection" class="itemized-box" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
         <strong style="font-size:0.9rem;">品物ごとの対象者</strong>
@@ -114,34 +142,83 @@
       </div>
       <div id="lineItemsContainer"></div>
       <div class="tax-note">
-        💡 消費税や割引などで品物の合計と「支払合計金額」に差額がある場合、各品物の金額比率で自動按分してピッタリ合算されます。
+        💡 消費税や割引で合計に差額がある場合、各品物の金額比率で自動按分して合算されます。
       </div>
     </div>
 
     <button id="submitBtn" onclick="addExpense()">スプレッドシートに保存</button>
   </div>
 
-  <!-- 3. 精算結果 -->
+  <!-- 3. AIアシスタント（チャットで修正・質問） -->
   <div class="card">
-    <h2>精算結果（誰が誰に払うか）</h2>
-    <div id="settlementList"><div class="loading">読み込み中...</div></div>
+    <h2>🤖 AIアシスタント（履歴の修正・質問）</h2>
+    <div id="chatBox" class="chat-box">
+      <div class="chat-msg chat-ai">「さっきの居酒屋からBを外して」「コンビニの支払者をAにして」「今いくら使った？」のように話しかけてください。</div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="例: 居酒屋の対象からBを外して" onkeydown="if(event.key==='Enter') sendAiChat()">
+      <button id="chatSendBtn" onclick="sendAiChat()">送信</button>
+    </div>
   </div>
 
-  <!-- 4. 支払い履歴 -->
+  <!-- 4. 精算結果 -->
+  <div class="card">
+    <h2>
+      <span>精算結果</span>
+      <div class="round-toggle">
+        <button type="button" class="round-btn active" id="roundBtn1" onclick="setRoundingUnit(1)">1円単位</button>
+        <button type="button" class="round-btn" id="roundBtn100" onclick="setRoundingUnit(100)">100円単位</button>
+      </div>
+    </h2>
+    <div id="settlementList"><div class="loading">読み込み中...</div></div>
+    <button type="button" class="btn-line" onclick="copySettlementForLine()">📋 LINE用に精算結果をコピー</button>
+    <button type="button" class="btn-archive" id="archiveTripBtn" onclick="archiveTripExpenses()">📦 清算完了（アーカイブへ退避）</button>
+  </div>
+
+  <!-- 5. 1人あたりの旅行総出費サマリー -->
+  <div class="card">
+    <h2>旅行総出費サマリー</h2>
+    <div id="summaryBox"></div>
+  </div>
+
+  <!-- 6. 支払い履歴 -->
   <div class="card">
     <h2>支払い履歴</h2>
     <div id="historyList"></div>
   </div>
 
+  <!-- 履歴編集モーダル -->
+  <div id="editModal" class="modal-overlay" onclick="if(event.target===this) closeEditModal()">
+    <div class="modal-content">
+      <h2>支払いを編集</h2>
+      <input type="hidden" id="editRecordId">
+      <label class="field-label">支払った人</label>
+      <select id="editPayerSelect"></select>
+      <label class="field-label">内容</label>
+      <input type="text" id="editItemInput">
+      <label class="field-label">金額（円）</label>
+      <input type="number" id="editAmountInput" inputmode="numeric">
+      <label class="field-label">対象者</label>
+      <div id="editParticipantsGrid" class="checkbox-grid"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeEditModal()">キャンセル</button>
+        <button type="button" id="saveEditBtn" onclick="saveEditedExpense()">変更を保存</button>
+      </div>
+    </div>
+  </div>
+
 <script>
   // ★ここにGASのウェブアプリURLを貼り付ける
   const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbygks_2kWVuE7GbKGkqyPgWN58GRceDCJ-Fozp0vJskX5wv2e8xMg5gTTfjtz6kUnLa/exec';
-  
+
   let allRecords = [];
   let tripMembersMap = {};
   let appPass = '';
   let isItemizedMode = false;
-  let scannedItems = []; // レシートから抽出した品目キャッシュ
+  let roundingUnit = Number(localStorage.getItem('trip_rounding_unit')) || 1;
+  let lastRenderedSettlements = [];
+  let lastRenderedSummary = [];
+  let lastTripTotal = 0;
 
   window.onload = () => {
     appPass = localStorage.getItem('trip_app_pass');
@@ -149,8 +226,25 @@
       appPass = prompt('合言葉を入力してください') || '';
       if (appPass) localStorage.setItem('trip_app_pass', appPass);
     }
+    updateRoundingButtons();
     fetchData();
   };
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  function setRoundingUnit(unit) {
+    roundingUnit = unit;
+    localStorage.setItem('trip_rounding_unit', unit);
+    updateRoundingButtons();
+    renderCurrentTrip();
+  }
+
+  function updateRoundingButtons() {
+    document.getElementById('roundBtn1').classList.toggle('active', roundingUnit === 1);
+    document.getElementById('roundBtn100').classList.toggle('active', roundingUnit === 100);
+  }
 
   function toggleItemizedMode(forceState) {
     isItemizedMode = typeof forceState === 'boolean' ? forceState : !isItemizedMode;
@@ -160,7 +254,6 @@
       ? '👥 全体まとめて割り勘に戻す'
       : '📋 品物別に対象者を分ける（オプション）';
 
-    // 品物別モードを開いたときに1行もなければ空行を1つ追加
     if (isItemizedMode && document.getElementById('lineItemsContainer').children.length === 0) {
       addLineItemRow('', '');
     }
@@ -191,10 +284,6 @@
     container.appendChild(row);
   }
 
-  function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
-  }
-
   async function handleReceiptUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -208,11 +297,7 @@
       const res = await fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          pass: appPass,
-          action: 'scanReceipt',
-          imageBase64: base64Data
-        })
+        body: JSON.stringify({ pass: appPass, action: 'scanReceipt', imageBase64: base64Data })
       });
       const result = await res.json();
 
@@ -222,11 +307,9 @@
         if (result.item) document.getElementById('itemInput').value = result.item;
         if (result.amount) document.getElementById('amountInput').value = result.amount;
 
-        // 明細が複数抽出できた場合は品物リストにセットしておく
-        scannedItems = Array.isArray(result.items) ? result.items : [];
-        if (scannedItems.length > 0) {
+        if (Array.isArray(result.items) && result.items.length > 0) {
           document.getElementById('lineItemsContainer').innerHTML = '';
-          scannedItems.forEach(it => addLineItemRow(it.name || '', it.price || ''));
+          result.items.forEach(it => addLineItemRow(it.name || '', it.price || ''));
         }
       }
     } catch (err) {
@@ -244,8 +327,7 @@
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          let w = img.width;
-          let h = img.height;
+          let w = img.width, h = img.height;
           if (w > maxSide || h > maxSide) {
             if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
             else { w = Math.round(w * maxSide / h); h = maxSide; }
@@ -307,7 +389,7 @@
       select.innerHTML = '<option value="">（上のボタンから旅行を作成してください）</option>';
       document.getElementById('tripEditor').style.display = 'block';
     } else {
-      select.innerHTML = tripNames.map(t => `<option value="${t}">${t}</option>`).join('');
+      select.innerHTML = tripNames.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
       if (tripNames.includes(currentVal)) select.value = currentVal;
     }
   }
@@ -341,12 +423,7 @@
       await fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          pass: appPass,
-          action: 'saveTrip',
-          tripName: tripName,
-          members: members.join(',')
-        })
+        body: JSON.stringify({ pass: appPass, action: 'saveTrip', tripName, members: members.join(',') })
       });
 
       tripMembersMap[tripName] = members;
@@ -371,18 +448,17 @@
 
     const payerSelect = document.getElementById('payerSelect');
     payerSelect.innerHTML = members.length
-      ? members.map(m => `<option value="${m}">${m}</option>`).join('')
+      ? members.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')
       : '<option value="">先にメンバーを登録してください</option>';
 
     const grid = document.getElementById('participantsGrid');
     grid.innerHTML = members.map(m => `
       <label class="check-chip">
-        <input type="checkbox" name="participant" value="${m}" checked>
-        <span>${m}</span>
+        <input type="checkbox" name="participant" value="${escapeHtml(m)}" checked>
+        <span>${escapeHtml(m)}</span>
       </label>
     `).join('');
 
-    // 品物別モード中のメンバーチップも更新
     document.getElementById('lineItemsContainer').innerHTML = '';
     if (isItemizedMode) addLineItemRow('', '');
 
@@ -410,7 +486,6 @@
     const today = new Date().toLocaleDateString('ja-JP');
 
     if (!isItemizedMode) {
-      // 【通常モード】これまで通り1行で保存
       const checkedBoxes = [...document.querySelectorAll('input[name="participant"]:checked')];
       const participants = checkedBoxes.map(b => b.value).join(',');
       if (!baseItem || !totalAmount || !participants) {
@@ -422,7 +497,6 @@
         payer, item: baseItem, amount: totalAmount, participants
       });
     } else {
-      // 【品物別オプションモード】
       const cards = [...document.querySelectorAll('.line-item-card')];
       const lineItems = [];
       for (const card of cards) {
@@ -445,7 +519,6 @@
       const targetTotal = totalAmount > 0 ? totalAmount : rawSum;
       const ratio = rawSum > 0 ? (targetTotal / rawSum) : 1;
 
-      // 消費税や割引の差額を比率で按分し、最終行で端数調整して合計を完全一致させる
       let allocatedSum = 0;
       lineItems.forEach((it, idx) => {
         let adjustedPrice;
@@ -484,7 +557,6 @@
       document.getElementById('itemInput').value = '';
       document.getElementById('amountInput').value = '';
       document.getElementById('lineItemsContainer').innerHTML = '';
-      scannedItems = [];
       if (isItemizedMode) toggleItemizedMode(false);
       document.querySelectorAll('input[name="participant"]').forEach(b => b.checked = true);
       await fetchData();
@@ -493,6 +565,76 @@
     } finally {
       btn.disabled = false;
       btn.innerText = 'スプレッドシートに保存';
+    }
+  }
+
+  // ===== 支払い履歴の編集 =====
+  function openEditModal(id) {
+    const rec = allRecords.find(r => r.ID === id);
+    if (!rec) return;
+
+    const tripName = document.getElementById('tripSelect').value;
+    const baseMembers = tripMembersMap[tripName] || [];
+    const currentTargets = String(rec.Participants).split(',').map(s => s.trim()).filter(Boolean);
+    const allMembers = [...new Set([...baseMembers, rec.Payer, ...currentTargets].filter(Boolean))];
+
+    document.getElementById('editRecordId').value = rec.ID;
+    document.getElementById('editItemInput').value = rec.Item;
+    document.getElementById('editAmountInput').value = rec.Amount;
+
+    const payerSel = document.getElementById('editPayerSelect');
+    payerSel.innerHTML = allMembers.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+    payerSel.value = rec.Payer;
+
+    const grid = document.getElementById('editParticipantsGrid');
+    grid.innerHTML = allMembers.map(m => `
+      <label class="check-chip">
+        <input type="checkbox" name="editParticipant" value="${escapeHtml(m)}" ${currentTargets.includes(m) ? 'checked' : ''}>
+        <span>${escapeHtml(m)}</span>
+      </label>
+    `).join('');
+
+    document.getElementById('editModal').style.display = 'flex';
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+  }
+
+  async function saveEditedExpense() {
+    const id = document.getElementById('editRecordId').value;
+    const payer = document.getElementById('editPayerSelect').value;
+    const item = document.getElementById('editItemInput').value.trim();
+    const amount = Number(document.getElementById('editAmountInput').value);
+    const participants = [...document.querySelectorAll('input[name="editParticipant"]:checked')].map(b => b.value).join(',');
+
+    if (!item || !amount || !participants) {
+      alert('内容・金額・対象者（1人以上）を入力してください');
+      return;
+    }
+
+    const btn = document.getElementById('saveEditBtn');
+    btn.disabled = true;
+    btn.innerText = '更新中...';
+
+    try {
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ pass: appPass, action: 'edit', id, payer, item, amount, participants })
+      });
+      const result = await res.json();
+      if (result.error) {
+        alert(result.error);
+      } else {
+        closeEditModal();
+        await fetchData();
+      }
+    } catch (err) {
+      alert('更新に失敗しました');
+    } finally {
+      btn.disabled = false;
+      btn.innerText = '変更を保存';
     }
   }
 
@@ -510,41 +652,226 @@
     }
   }
 
+  // ===== 清算完了（アーカイブ退避） =====
+  async function archiveTripExpenses() {
+    const tripName = document.getElementById('tripSelect').value;
+    if (!tripName) return;
+
+    const count = allRecords.filter(r => r.TripName === tripName).length;
+    if (count === 0) {
+      alert('アーカイブする支払い履歴がありません');
+      return;
+    }
+
+    if (!confirm(`「${tripName}」の支払い履歴（${count}件）を Archive シートへ退避し、清算完了にしますか？\n（データは消えずスプレッドシートの Archive シートに残ります）`)) {
+      return;
+    }
+
+    const btn = document.getElementById('archiveTripBtn');
+    btn.disabled = true;
+    btn.innerText = 'アーカイブ中...';
+
+    try {
+      await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ pass: appPass, action: 'archiveTrip', tripName })
+      });
+      await fetchData();
+      alert(`「${tripName}」の履歴を Archive シートへ退避しました！`);
+    } catch (err) {
+      alert('アーカイブ処理に失敗しました');
+    } finally {
+      btn.disabled = false;
+      btn.innerText = '📦 清算完了（アーカイブへ退避）';
+    }
+  }
+
+  // ===== LINE共有用コピー =====
+  function copySettlementForLine() {
+    const tripName = document.getElementById('tripSelect').value;
+    if (!tripName) return;
+
+    const unitLabel = roundingUnit === 100 ? '（100円単位丸め）' : '';
+    let text = `【${tripName} 精算結果${unitLabel}】\n`;
+
+    if (lastRenderedSettlements.length === 0) {
+      text += '精算はありません。\n';
+    } else {
+      lastRenderedSettlements.forEach(s => {
+        text += `・${s.from} → ${s.to}：${s.amount.toLocaleString()}円\n`;
+      });
+    }
+
+    if (lastRenderedSummary.length > 0) {
+      text += `\n【1人あたりの総出費】（全体合計：${Math.round(lastTripTotal).toLocaleString()}円）\n`;
+      lastRenderedSummary.forEach(u => {
+        text += `・${u.person}：${Math.round(u.share).toLocaleString()}円（立替 ${Math.round(u.paid).toLocaleString()}円）\n`;
+      });
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => alert('LINE用の精算結果をコピーしました！'))
+        .catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('LINE用の精算結果をコピーしました！');
+  }
+
+  // ===== AIチャット =====
+  function appendChatBubble(role, text) {
+    const box = document.getElementById('chatBox');
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role === 'user' ? 'chat-user' : 'chat-ai'}`;
+    div.innerText = text;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendAiChat() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    const tripName = document.getElementById('tripSelect').value;
+    if (!message || !tripName) return;
+
+    const sendBtn = document.getElementById('chatSendBtn');
+    appendChatBubble('user', message);
+    input.value = '';
+    sendBtn.disabled = true;
+    sendBtn.innerText = '...';
+
+    try {
+      const currentRecords = allRecords.filter(r => r.TripName === tripName);
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          pass: appPass,
+          action: 'aiChat',
+          tripName,
+          members: tripMembersMap[tripName] || [],
+          records: currentRecords,
+          message
+        })
+      });
+      const result = await res.json();
+
+      if (result.error) {
+        appendChatBubble('ai', 'エラー: ' + result.error);
+      } else {
+        appendChatBubble('ai', result.reply || '完了しました。');
+        if (result.mutated) {
+          await fetchData();
+        }
+      }
+    } catch (err) {
+      appendChatBubble('ai', '通信エラーが発生しました。');
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.innerText = '送信';
+    }
+  }
+
+  // ===== 描画処理（履歴・サマリー・精算） =====
   function renderCurrentTrip() {
     const tripName = document.getElementById('tripSelect').value;
     const records = allRecords.filter(r => r.TripName === tripName);
+    const members = tripMembersMap[tripName] || [];
 
+    // 1. 履歴
     const historyEl = document.getElementById('historyList');
     historyEl.innerHTML = records.length ? records.map(r => `
       <div class="history-item">
         <div>
-          <strong>${r.Item}</strong> (${Number(r.Amount).toLocaleString()}円)<br>
-          <small style="color:#555;">支払: ${r.Payer} ／ 対象: ${r.Participants}</small>
+          <strong>${escapeHtml(r.Item)}</strong> (${Number(r.Amount).toLocaleString()}円)<br>
+          <small style="color:#555;">支払: ${escapeHtml(r.Payer)} ／ 対象: ${escapeHtml(r.Participants)}</small>
         </div>
-        <button class="del-btn" onclick="deleteExpense('${r.ID}')">削除</button>
+        <div class="history-actions">
+          <button class="edit-btn" onclick="openEditModal('${escapeHtml(r.ID)}')">編集</button>
+          <button class="del-btn" onclick="deleteExpense('${escapeHtml(r.ID)}')">削除</button>
+        </div>
       </div>
     `).join('') : '<p style="color:#666; font-size:0.9rem;">まだ記録がありません</p>';
 
+    // 2. 収支・総出費計算
     const balances = {};
+    const paidMap = {};
+    const shareMap = {};
+    let totalSpent = 0;
+
+    members.forEach(m => { balances[m] = 0; paidMap[m] = 0; shareMap[m] = 0; });
+
     records.forEach(r => {
       const amount = Number(r.Amount);
-      const payer = r.Payer.trim();
+      const payer = String(r.Payer).trim();
       const targets = String(r.Participants).split(',').map(s => s.trim()).filter(Boolean);
       if (targets.length === 0) return;
 
+      totalSpent += amount;
       const splitAmount = amount / targets.length;
       balances[payer] = (balances[payer] || 0) + amount;
+      paidMap[payer] = (paidMap[payer] || 0) + amount;
       targets.forEach(t => {
         balances[t] = (balances[t] || 0) - splitAmount;
+        shareMap[t] = (shareMap[t] || 0) + splitAmount;
       });
     });
 
+    // 3. 旅行総出費サマリー描画
+    lastTripTotal = totalSpent;
+    const allPeople = Object.keys(balances);
+    lastRenderedSummary = allPeople.map(p => ({
+      person: p,
+      paid: paidMap[p] || 0,
+      share: shareMap[p] || 0
+    }));
+
+    const summaryEl = document.getElementById('summaryBox');
+    if (records.length === 0) {
+      summaryEl.innerHTML = '<p style="color:#666; font-size:0.9rem;">まだデータがありません</p>';
+    } else {
+      summaryEl.innerHTML = `
+        <div class="total-banner">
+          <span>旅行全体の合計出費</span>
+          <strong>${Math.round(totalSpent).toLocaleString()}円</strong>
+        </div>
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>メンバー</th>
+              <th>実質負担額</th>
+              <th>立替済</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lastRenderedSummary.map(u => `
+              <tr>
+                <td><strong>${escapeHtml(u.person)}</strong></td>
+                <td>${Math.round(u.share).toLocaleString()}円</td>
+                <td style="color:#64748b;">${Math.round(u.paid).toLocaleString()}円</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // 4. 精算ロジック（端数丸め対応）
     let debtors = [], creditors = [];
     for (const [person, bal] of Object.entries(balances)) {
       if (bal < -1) debtors.push({ person, amount: -bal });
       if (bal > 1) creditors.push({ person, amount: bal });
     }
-
     debtors.sort((a, b) => b.amount - a.amount);
     creditors.sort((a, b) => b.amount - a.amount);
 
@@ -552,16 +879,28 @@
     let i = 0, j = 0;
     while (i < debtors.length && j < creditors.length) {
       const pay = Math.min(debtors[i].amount, creditors[j].amount);
-      settlements.push(`${debtors[i].person} → ${creditors[j].person} に <strong>${Math.round(pay).toLocaleString()}円</strong>`);
+      const roundedPay = roundingUnit === 100
+        ? Math.round(pay / 100) * 100
+        : Math.round(pay);
+
+      if (roundedPay > 0) {
+        settlements.push({ from: debtors[i].person, to: creditors[j].person, amount: roundedPay });
+      }
       debtors[i].amount -= pay;
       creditors[j].amount -= pay;
       if (debtors[i].amount < 1) i++;
       if (creditors[j].amount < 1) j++;
     }
 
+    lastRenderedSettlements = settlements;
+
     const settlementEl = document.getElementById('settlementList');
     settlementEl.innerHTML = settlements.length
-      ? settlements.map(s => `<div class="settlement-item">${s}</div>`).join('')
+      ? settlements.map(s => `
+          <div class="settlement-item">
+            ${escapeHtml(s.from)} → ${escapeHtml(s.to)} に <strong>${s.amount.toLocaleString()}円</strong>
+          </div>
+        `).join('')
       : '<p style="color:#666; font-size:0.9rem;">精算は完了しています（またはデータがありません）</p>';
   }
 </script>
