@@ -19,9 +19,11 @@
     button:active { opacity: 0.85; }
     button:disabled { background: #99c2ff; }
     .btn-green { background: #28a745; }
-    .btn-scan { background: #6f42c1; margin-bottom: 12px; }
+    .btn-scan { background: #6f42c1; margin-bottom: 10px; }
+    .btn-opt { background: #f0f4f8; color: #0066cc; border: 1.5px solid #0066cc; font-size: 0.9rem; padding: 10px; margin: 8px 0; }
     .btn-sub { width: auto; padding: 6px 12px; font-size: 0.8rem; background: #6c757d; margin: 0; }
     
+    /* 通常の対象者チップ */
     .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0 14px; }
     .check-chip {
       display: flex; align-items: center; padding: 10px 12px; border: 1.5px solid #d0d7de; border-radius: 8px; background: #fafbfc; cursor: pointer; font-size: 15px; user-select: none;
@@ -29,6 +31,22 @@
     .check-chip input { width: 18px; height: 18px; margin-right: 8px; accent-color: #0066cc; }
     .check-chip:has(input:checked) { border-color: #0066cc; background: #eef6ff; font-weight: bold; }
 
+    /* 品物別オプションカード */
+    .itemized-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin: 10px 0 14px; }
+    .line-item-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .line-item-top { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .line-item-top input[type="text"] { flex: 2; margin: 0; padding: 8px; font-size: 15px; }
+    .line-item-top input[type="number"] { flex: 1; margin: 0; padding: 8px; font-size: 15px; }
+    .line-del-btn { width: auto; background: #ff4d4f; padding: 8px 10px; margin: 0; font-size: 0.8rem; }
+    .mini-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .mini-chip {
+      display: inline-flex; align-items: center; padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 16px; font-size: 13px; background: #f8fafc; cursor: pointer; user-select: none;
+    }
+    .mini-chip input { display: none; }
+    .mini-chip:has(input:checked) { background: #0066cc; color: #fff; border-color: #0066cc; font-weight: bold; }
+    .tax-note { font-size: 0.8rem; color: #475569; background: #e2e8f0; padding: 8px; border-radius: 6px; margin-top: 6px; }
+
+    /* 精算結果・履歴 */
     .settlement-item { background: #eef6ff; padding: 12px; border-left: 4px solid #0066cc; border-radius: 6px; margin-bottom: 8px; font-size: 0.95rem; }
     .history-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9rem; gap: 8px; }
     .history-item:last-child { border-bottom: none; }
@@ -60,7 +78,6 @@
   <div class="card">
     <h2>支払いを記録</h2>
 
-    <!-- レシート読取ボタン（非表示のfile inputをボタンから起動） -->
     <input type="file" id="receiptInput" accept="image/*" style="display:none;" onchange="handleReceiptUpload(event)">
     <button type="button" class="btn-scan" id="scanBtn" onclick="document.getElementById('receiptInput').click()">
       📷 レシートから自動入力（カメラ / 写真）
@@ -69,17 +86,37 @@
     <label class="field-label">支払った人</label>
     <select id="payerSelect"></select>
 
-    <label class="field-label">内容</label>
-    <input type="text" id="itemInput" placeholder="例: 夕食、レンタカー、入場料">
+    <label class="field-label">店名 / 全体の内容</label>
+    <input type="text" id="itemInput" placeholder="例: スーパー、居酒屋、レンタカー">
 
-    <label class="field-label">金額（円）</label>
+    <label class="field-label">支払合計金額（円）</label>
     <input type="number" id="amountInput" inputmode="numeric" placeholder="例: 6000">
 
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-      <label class="field-label" style="margin:0;">誰の分？（対象者）</label>
-      <button type="button" class="btn-sub" onclick="toggleAllParticipants()">全員選択 / 解除</button>
+    <!-- 品物別オプション切り替えボタン -->
+    <button type="button" class="btn-opt" id="toggleItemizedBtn" onclick="toggleItemizedMode()">
+      📋 品物別に対象者を分ける（オプション）
+    </button>
+
+    <!-- 通常モード：一括対象者選択 -->
+    <div id="bulkParticipantsSection">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+        <label class="field-label" style="margin:0;">誰の分？（対象者）</label>
+        <button type="button" class="btn-sub" onclick="toggleAllParticipants()">全員選択 / 解除</button>
+      </div>
+      <div id="participantsGrid" class="checkbox-grid"></div>
     </div>
-    <div id="participantsGrid" class="checkbox-grid"></div>
+
+    <!-- オプションモード：品物別リスト -->
+    <div id="itemizedSection" class="itemized-box" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <strong style="font-size:0.9rem;">品物ごとの対象者</strong>
+        <button type="button" class="btn-sub" style="background:#0066cc;" onclick="addLineItemRow('', '')">＋ 品物を追加</button>
+      </div>
+      <div id="lineItemsContainer"></div>
+      <div class="tax-note">
+        💡 消費税や割引などで品物の合計と「支払合計金額」に差額がある場合、各品物の金額比率で自動按分してピッタリ合算されます。
+      </div>
+    </div>
 
     <button id="submitBtn" onclick="addExpense()">スプレッドシートに保存</button>
   </div>
@@ -103,6 +140,8 @@
   let allRecords = [];
   let tripMembersMap = {};
   let appPass = '';
+  let isItemizedMode = false;
+  let scannedItems = []; // レシートから抽出した品目キャッシュ
 
   window.onload = () => {
     appPass = localStorage.getItem('trip_app_pass');
@@ -113,17 +152,59 @@
     fetchData();
   };
 
-  // レシート画像の圧縮とGemini API解析リクエスト
+  function toggleItemizedMode(forceState) {
+    isItemizedMode = typeof forceState === 'boolean' ? forceState : !isItemizedMode;
+    document.getElementById('bulkParticipantsSection').style.display = isItemizedMode ? 'none' : 'block';
+    document.getElementById('itemizedSection').style.display = isItemizedMode ? 'block' : 'none';
+    document.getElementById('toggleItemizedBtn').innerText = isItemizedMode
+      ? '👥 全体まとめて割り勘に戻す'
+      : '📋 品物別に対象者を分ける（オプション）';
+
+    // 品物別モードを開いたときに1行もなければ空行を1つ追加
+    if (isItemizedMode && document.getElementById('lineItemsContainer').children.length === 0) {
+      addLineItemRow('', '');
+    }
+  }
+
+  function addLineItemRow(name = '', price = '') {
+    const tripName = document.getElementById('tripSelect').value;
+    const members = tripMembersMap[tripName] || [];
+    const container = document.getElementById('lineItemsContainer');
+
+    const row = document.createElement('div');
+    row.className = 'line-item-card';
+    row.innerHTML = `
+      <div class="line-item-top">
+        <input type="text" class="li-name" placeholder="品名" value="${escapeHtml(name)}">
+        <input type="number" class="li-price" inputmode="numeric" placeholder="金額" value="${price}">
+        <button type="button" class="line-del-btn" onclick="this.closest('.line-item-card').remove()">✕</button>
+      </div>
+      <div class="mini-chips">
+        ${members.map(m => `
+          <label class="mini-chip">
+            <input type="checkbox" value="${escapeHtml(m)}" checked>
+            <span>${escapeHtml(m)}</span>
+          </label>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(row);
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
   async function handleReceiptUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const scanBtn = document.getElementById('scanBtn');
     scanBtn.disabled = true;
-    scanBtn.innerText = '⏳ レシートを解析中...';
+    scanBtn.innerText = '⏳ レシートと明細を解析中...';
 
     try {
-      const base64Data = await resizeImageToBase64(file, 800);
+      const base64Data = await resizeImageToBase64(file, 900);
       const res = await fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -140,17 +221,23 @@
       } else {
         if (result.item) document.getElementById('itemInput').value = result.item;
         if (result.amount) document.getElementById('amountInput').value = result.amount;
+
+        // 明細が複数抽出できた場合は品物リストにセットしておく
+        scannedItems = Array.isArray(result.items) ? result.items : [];
+        if (scannedItems.length > 0) {
+          document.getElementById('lineItemsContainer').innerHTML = '';
+          scannedItems.forEach(it => addLineItemRow(it.name || '', it.price || ''));
+        }
       }
     } catch (err) {
       alert('画像の送信・解析に失敗しました');
     } finally {
       scanBtn.disabled = false;
       scanBtn.innerText = '📷 レシートから自動入力（カメラ / 写真）';
-      event.target.value = ''; // 同じ画像を再選択できるようにリセット
+      event.target.value = '';
     }
   }
 
-  // スマホ写真を軽量JPEG(Base64)に変換する関数
   function resizeImageToBase64(file, maxSide) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -160,21 +247,14 @@
           let w = img.width;
           let h = img.height;
           if (w > maxSide || h > maxSide) {
-            if (w > h) {
-              h = Math.round(h * maxSide / w);
-              w = maxSide;
-            } else {
-              w = Math.round(w * maxSide / h);
-              h = maxSide;
-            }
+            if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+            else { w = Math.round(w * maxSide / h); h = maxSide; }
           }
           const canvas = document.createElement('canvas');
           canvas.width = w;
           canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          resolve(dataUrl.split(',')[1]); // "data:image/jpeg;base64," を除いた本体を返す
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.82).split(',')[1]);
         };
         img.onerror = reject;
         img.src = e.target.result;
@@ -302,6 +382,10 @@
       </label>
     `).join('');
 
+    // 品物別モード中のメンバーチップも更新
+    document.getElementById('lineItemsContainer').innerHTML = '';
+    if (isItemizedMode) addLineItemRow('', '');
+
     renderCurrentTrip();
   }
 
@@ -314,47 +398,94 @@
   async function addExpense() {
     const tripName = document.getElementById('tripSelect').value;
     const payer = document.getElementById('payerSelect').value;
-    const item = document.getElementById('itemInput').value.trim();
-    const amount = Number(document.getElementById('amountInput').value);
-    const checkedBoxes = [...document.querySelectorAll('input[name="participant"]:checked')];
-    const participants = checkedBoxes.map(b => b.value).join(',');
+    const baseItem = document.getElementById('itemInput').value.trim();
+    const totalAmount = Number(document.getElementById('amountInput').value);
 
     if (!tripName || !payer) {
       alert('先に「＋ 新規 / メンバー編集」から旅行とメンバーを登録してください');
       return;
     }
-    if (!item || !amount || !participants) {
-      alert('内容・金額・対象者（1人以上）を入力してください');
-      return;
+
+    const payloadsToSend = [];
+    const today = new Date().toLocaleDateString('ja-JP');
+
+    if (!isItemizedMode) {
+      // 【通常モード】これまで通り1行で保存
+      const checkedBoxes = [...document.querySelectorAll('input[name="participant"]:checked')];
+      const participants = checkedBoxes.map(b => b.value).join(',');
+      if (!baseItem || !totalAmount || !participants) {
+        alert('内容・金額・対象者（1人以上）を入力してください');
+        return;
+      }
+      payloadsToSend.push({
+        pass: appPass, action: 'add', tripName, date: today,
+        payer, item: baseItem, amount: totalAmount, participants
+      });
+    } else {
+      // 【品物別オプションモード】
+      const cards = [...document.querySelectorAll('.line-item-card')];
+      const lineItems = [];
+      for (const card of cards) {
+        const name = card.querySelector('.li-name').value.trim() || '品物';
+        const price = Number(card.querySelector('.li-price').value);
+        const targets = [...card.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value);
+        if (!price || targets.length === 0) {
+          alert('すべての品物に「金額」と「1人以上の対象者」を設定してください（不要な行は✕で削除）');
+          return;
+        }
+        lineItems.push({ name, price, targets });
+      }
+
+      if (lineItems.length === 0) {
+        alert('品物を1つ以上追加してください');
+        return;
+      }
+
+      const rawSum = lineItems.reduce((sum, it) => sum + it.price, 0);
+      const targetTotal = totalAmount > 0 ? totalAmount : rawSum;
+      const ratio = rawSum > 0 ? (targetTotal / rawSum) : 1;
+
+      // 消費税や割引の差額を比率で按分し、最終行で端数調整して合計を完全一致させる
+      let allocatedSum = 0;
+      lineItems.forEach((it, idx) => {
+        let adjustedPrice;
+        if (idx === lineItems.length - 1) {
+          adjustedPrice = Math.round(targetTotal - allocatedSum);
+        } else {
+          adjustedPrice = Math.round(it.price * ratio);
+          allocatedSum += adjustedPrice;
+        }
+        const label = baseItem ? `${baseItem}（${it.name}）` : it.name;
+        payloadsToSend.push({
+          pass: appPass, action: 'add', tripName, date: today,
+          payer, item: label, amount: adjustedPrice, participants: it.targets.join(',')
+        });
+      });
     }
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.innerText = '保存中...';
+    btn.innerText = `保存中... (${payloadsToSend.length}件)`;
 
     try {
-      const res = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          pass: appPass,
-          action: 'add',
-          tripName,
-          date: new Date().toLocaleDateString('ja-JP'),
-          payer,
-          item,
-          amount,
-          participants
-        })
-      });
-      const result = await res.json();
-      if (result.error === 'Unauthorized') {
-        alert('合言葉が違います');
-        return;
+      for (const payload of payloadsToSend) {
+        const res = await fetch(GAS_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.error === 'Unauthorized') {
+          alert('合言葉が違います');
+          return;
+        }
       }
 
       document.getElementById('itemInput').value = '';
       document.getElementById('amountInput').value = '';
+      document.getElementById('lineItemsContainer').innerHTML = '';
+      scannedItems = [];
+      if (isItemizedMode) toggleItemizedMode(false);
       document.querySelectorAll('input[name="participant"]').forEach(b => b.checked = true);
       await fetchData();
     } catch (err) {
