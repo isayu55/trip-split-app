@@ -2,44 +2,90 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>旅行割り勘・精算アプリ</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 16px; background: #f5f7fa; color: #333; }
-    .card { background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 16px; }
-    h2, h3 { margin-top: 0; font-size: 1.1rem; }
-    input, select, button { width: 100%; padding: 10px; margin: 6px 0 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
-    button { background: #0066cc; color: #fff; border: none; font-weight: bold; cursor: pointer; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 12px; background: #f2f4f8; color: #222; }
+    .card { background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 14px; }
+    h2 { margin: 0 0 12px; font-size: 1.05rem; color: #111; display: flex; justify-content: space-between; align-items: center; }
+    label.field-label { display: block; font-size: 0.85rem; font-weight: bold; color: #555; margin-top: 8px; }
+    input[type="text"], input[type="number"], select {
+      width: 100%; padding: 12px; margin: 4px 0 10px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 16px; background: #fff;
+    }
+    button {
+      width: 100%; padding: 13px; margin: 6px 0; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; color: #fff; background: #0066cc; cursor: pointer; touch-action: manipulation;
+    }
+    button:active { opacity: 0.85; }
     button:disabled { background: #99c2ff; }
-    .settlement-item { background: #eef6ff; padding: 10px; border-left: 4px solid #0066cc; margin-bottom: 8px; font-weight: bold; }
-    .history-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 8px 0; font-size: 0.9rem; }
-    .del-btn { width: auto; background: #ff4d4f; padding: 4px 8px; font-size: 0.8rem; margin: 0; }
-    .loading { text-align: center; color: #666; font-size: 0.9rem; }
+    .btn-green { background: #28a745; }
+    .btn-sub { width: auto; padding: 6px 12px; font-size: 0.8rem; background: #6c757d; margin: 0; }
+    
+    /* 対象者チェックボックス（スマホで押しやすいチップ型） */
+    .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0 14px; }
+    .check-chip {
+      display: flex; align-items: center; padding: 10px 12px; border: 1.5px solid #d0d7de; border-radius: 8px; background: #fafbfc; cursor: pointer; font-size: 15px; user-select: none;
+    }
+    .check-chip input { width: 18px; height: 18px; margin-right: 8px; accent-color: #0066cc; }
+    .check-chip:has(input:checked) { border-color: #0066cc; background: #eef6ff; font-weight: bold; }
+
+    /* 精算結果・履歴 */
+    .settlement-item { background: #eef6ff; padding: 12px; border-left: 4px solid #0066cc; border-radius: 6px; margin-bottom: 8px; font-size: 0.95rem; }
+    .history-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9rem; gap: 8px; }
+    .history-item:last-child { border-bottom: none; }
+    .del-btn { width: auto; background: #ff4d4f; padding: 6px 10px; font-size: 0.8rem; margin: 0; flex-shrink: 0; }
+    .toggle-box { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 8px; border: 1px solid #e1e4e8; }
+    .loading { text-align: center; color: #666; font-size: 0.9rem; padding: 8px; }
   </style>
 </head>
 <body>
 
+  <!-- 1. 旅行の選択とメンバー管理 -->
   <div class="card">
-    <h2>旅行の選択 / 新規作成</h2>
-    <select id="tripSelect" onchange="renderCurrentTrip()"></select>
-    <input type="text" id="newTripInput" placeholder="新しい旅行名 (例: 2026年11月 横浜旅行)">
-    <button onclick="addNewTrip()" style="background:#28a745;">旅行を追加</button>
+    <h2>
+      <span>旅行を選択</span>
+      <button class="btn-sub" onclick="toggleTripEditor()">＋ 新規 / メンバー編集</button>
+    </h2>
+    <select id="tripSelect" onchange="onTripChange()"></select>
+
+    <div id="tripEditor" class="toggle-box" style="display:none;">
+      <label class="field-label">旅行名</label>
+      <input type="text" id="editTripName" placeholder="例: 2026年11月 横浜旅行">
+      <label class="field-label">参加メンバー（カンマ区切り）</label>
+      <input type="text" id="editTripMembers" placeholder="例: 勇真,Aさん,Bさん">
+      <button class="btn-green" id="saveTripBtn" onclick="saveTripSettings()">この旅行・メンバーを保存</button>
+    </div>
   </div>
 
+  <!-- 2. 支払いの記録 -->
   <div class="card">
     <h2>支払いを記録</h2>
-    <input type="text" id="payerInput" placeholder="支払った人 (例: 自分)">
-    <input type="text" id="itemInput" placeholder="内容 (例: レンタカー代、夕食)">
-    <input type="number" id="amountInput" placeholder="金額 (円)">
-    <input type="text" id="participantsInput" placeholder="対象者 カンマ区切り (例: 自分,Aさん,Bさん)">
+    
+    <label class="field-label">支払った人</label>
+    <select id="payerSelect"></select>
+
+    <label class="field-label">内容</label>
+    <input type="text" id="itemInput" placeholder="例: 夕食、レンタカー、入場料">
+
+    <label class="field-label">金額（円）</label>
+    <input type="number" id="amountInput" inputmode="numeric" placeholder="例: 6000">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+      <label class="field-label" style="margin:0;">誰の分？（対象者）</label>
+      <button type="button" class="btn-sub" onclick="toggleAllParticipants()">全員選択 / 解除</button>
+    </div>
+    <div id="participantsGrid" class="checkbox-grid"></div>
+
     <button id="submitBtn" onclick="addExpense()">スプレッドシートに保存</button>
   </div>
 
+  <!-- 3. 精算結果 -->
   <div class="card">
     <h2>精算結果（誰が誰に払うか）</h2>
     <div id="settlementList"><div class="loading">読み込み中...</div></div>
   </div>
 
+  <!-- 4. 支払い履歴 -->
   <div class="card">
     <h2>支払い履歴</h2>
     <div id="historyList"></div>
@@ -50,21 +96,19 @@
   const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzlx2nN_9JaDu5BDkb_ksfKIR1zZlyaAX5iH_mubhPMWK_fC8RO1IWJzZDDzw2U15Rr/exec';
   
   let allRecords = [];
-  let customTrips = [];
+  let tripMembersMap = {}; // { "旅行名": ["メンバー1", "メンバー2"] }
   let appPass = '';
 
   window.onload = () => {
     appPass = localStorage.getItem('trip_app_pass');
     if (!appPass) {
       appPass = prompt('合言葉を入力してください') || '';
-      if (appPass) {
-        localStorage.setItem('trip_app_pass', appPass);
-      }
+      if (appPass) localStorage.setItem('trip_app_pass', appPass);
     }
-    fetchRecords();
+    fetchData();
   };
 
-  async function fetchRecords() {
+  async function fetchData() {
     try {
       const res = await fetch(`${GAS_API_URL}?pass=${encodeURIComponent(appPass)}`);
       const data = await res.json();
@@ -76,46 +120,139 @@
         return;
       }
 
-      allRecords = data;
+      if (!data.records || !Array.isArray(data.records)) {
+        document.getElementById('settlementList').innerText = 'シート構成を確認してください（Expenses と Trips シートが必要です）';
+        return;
+      }
+
+      allRecords = data.records;
+      tripMembersMap = data.trips || {};
+
+      // 過去の履歴にあってTripsシートに未登録の旅行も補完
+      allRecords.forEach(r => {
+        if (r.TripName && !tripMembersMap[r.TripName]) {
+          const inferred = new Set([r.Payer, ...String(r.Participants).split(',')].map(s => s.trim()).filter(Boolean));
+          tripMembersMap[r.TripName] = [...inferred];
+        }
+      });
+
       updateTripDropdown();
-      renderCurrentTrip();
+      onTripChange();
     } catch (err) {
-      document.getElementById('settlementList').innerText = 'データの取得に失敗しました。URLまたは通信環境を確認してください。';
+      document.getElementById('settlementList').innerText = 'データの取得に失敗しました。URLや通信を確認してください。';
     }
   }
 
   function updateTripDropdown() {
     const select = document.getElementById('tripSelect');
     const currentVal = select.value;
-    const tripsFromRecords = [...new Set(allRecords.map(r => r.TripName).filter(Boolean))];
-    const allTrips = [...new Set([...tripsFromRecords, ...customTrips])];
-    
-    select.innerHTML = allTrips.length 
-      ? allTrips.map(t => `<option value="${t}">${t}</option>`).join('')
-      : '<option value="デフォルト旅行">デフォルト旅行</option>';
-      
-    if (allTrips.includes(currentVal)) select.value = currentVal;
+    const tripNames = Object.keys(tripMembersMap);
+
+    if (tripNames.length === 0) {
+      select.innerHTML = '<option value="">（上のボタンから旅行を作成してください）</option>';
+      document.getElementById('tripEditor').style.display = 'block';
+    } else {
+      select.innerHTML = tripNames.map(t => `<option value="${t}">${t}</option>`).join('');
+      if (tripNames.includes(currentVal)) select.value = currentVal;
+    }
   }
 
-  function addNewTrip() {
-    const name = document.getElementById('newTripInput').value.trim();
-    if (!name) return;
-    customTrips.push(name);
-    updateTripDropdown();
-    document.getElementById('tripSelect').value = name;
-    document.getElementById('newTripInput').value = '';
+  function toggleTripEditor() {
+    const box = document.getElementById('tripEditor');
+    const isHidden = box.style.display === 'none';
+    box.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+      const currentTrip = document.getElementById('tripSelect').value;
+      document.getElementById('editTripName').value = currentTrip;
+      document.getElementById('editTripMembers').value = (tripMembersMap[currentTrip] || []).join(',');
+    }
+  }
+
+  async function saveTripSettings() {
+    const tripName = document.getElementById('editTripName').value.trim();
+    const membersRaw = document.getElementById('editTripMembers').value.trim();
+    const members = membersRaw.split(/[,、]/).map(s => s.trim()).filter(Boolean);
+
+    if (!tripName || members.length === 0) {
+      alert('旅行名と参加メンバー（1人以上）を入力してください');
+      return;
+    }
+
+    const btn = document.getElementById('saveTripBtn');
+    btn.disabled = true;
+    btn.innerText = '保存中...';
+
+    try {
+      await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          pass: appPass,
+          action: 'saveTrip',
+          tripName: tripName,
+          members: members.join(',')
+        })
+      });
+
+      tripMembersMap[tripName] = members;
+      updateTripDropdown();
+      document.getElementById('tripSelect').value = tripName;
+      document.getElementById('tripEditor').style.display = 'none';
+      onTripChange();
+    } catch (e) {
+      alert('旅行設定の保存に失敗しました');
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'この旅行・メンバーを保存';
+    }
+  }
+
+  function onTripChange() {
+    const tripName = document.getElementById('tripSelect').value;
+    const members = tripMembersMap[tripName] || [];
+
+    // 編集欄にも現在の値を同期
+    document.getElementById('editTripName').value = tripName;
+    document.getElementById('editTripMembers').value = members.join(',');
+
+    // 「支払った人」プルダウンの更新
+    const payerSelect = document.getElementById('payerSelect');
+    payerSelect.innerHTML = members.length
+      ? members.map(m => `<option value="${m}">${m}</option>`).join('')
+      : '<option value="">先にメンバーを登録してください</option>';
+
+    // 「対象者」チェックボックスの更新（デフォルト全員チェック）
+    const grid = document.getElementById('participantsGrid');
+    grid.innerHTML = members.map(m => `
+      <label class="check-chip">
+        <input type="checkbox" name="participant" value="${m}" checked>
+        <span>${m}</span>
+      </label>
+    `).join('');
+
     renderCurrentTrip();
+  }
+
+  function toggleAllParticipants() {
+    const boxes = document.querySelectorAll('input[name="participant"]');
+    const allChecked = [...boxes].every(b => b.checked);
+    boxes.forEach(b => b.checked = !allChecked);
   }
 
   async function addExpense() {
     const tripName = document.getElementById('tripSelect').value;
-    const payer = document.getElementById('payerInput').value.trim();
+    const payer = document.getElementById('payerSelect').value;
     const item = document.getElementById('itemInput').value.trim();
     const amount = Number(document.getElementById('amountInput').value);
-    const participants = document.getElementById('participantsInput').value.trim();
+    const checkedBoxes = [...document.querySelectorAll('input[name="participant"]:checked')];
+    const participants = checkedBoxes.map(b => b.value).join(',');
 
-    if (!payer || !item || !amount || !participants) {
-      alert('すべての項目を入力してください');
+    if (!tripName || !payer) {
+      alert('先に「＋ 新規 / メンバー編集」から旅行とメンバーを登録してください');
+      return;
+    }
+    if (!item || !amount || !participants) {
+      alert('内容・金額・対象者（1人以上）を入力してください');
       return;
     }
 
@@ -123,37 +260,34 @@
     btn.disabled = true;
     btn.innerText = '保存中...';
 
-    const payload = {
-      pass: appPass,
-      action: 'add',
-      tripName,
-      date: new Date().toLocaleDateString('ja-JP'),
-      payer,
-      item,
-      amount,
-      participants
-    };
-
     try {
       const res = await fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          pass: appPass,
+          action: 'add',
+          tripName,
+          date: new Date().toLocaleDateString('ja-JP'),
+          payer,
+          item,
+          amount,
+          participants
+        })
       });
       const result = await res.json();
-
       if (result.error === 'Unauthorized') {
-        alert('合言葉が違います。');
-        localStorage.removeItem('trip_app_pass');
-        location.reload();
+        alert('合言葉が違います');
         return;
       }
 
       document.getElementById('itemInput').value = '';
       document.getElementById('amountInput').value = '';
-      await fetchRecords();
+      // 対象者は全員チェック状態にリセット
+      document.querySelectorAll('input[name="participant"]').forEach(b => b.checked = true);
+      await fetchData();
     } catch (err) {
-      alert('保存に失敗しました。');
+      alert('保存に失敗しました');
     } finally {
       btn.disabled = false;
       btn.innerText = 'スプレッドシートに保存';
@@ -163,22 +297,14 @@
   async function deleteExpense(id) {
     if (!confirm('この記録を削除しますか？')) return;
     try {
-      const res = await fetch(GAS_API_URL, {
+      await fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ pass: appPass, action: 'delete', id })
       });
-      const result = await res.json();
-
-      if (result.error === 'Unauthorized') {
-        alert('合言葉が違います。');
-        localStorage.removeItem('trip_app_pass');
-        location.reload();
-        return;
-      }
-      await fetchRecords();
+      await fetchData();
     } catch (err) {
-      alert('削除に失敗しました。');
+      alert('削除に失敗しました');
     }
   }
 
@@ -192,13 +318,13 @@
       <div class="history-item">
         <div>
           <strong>${r.Item}</strong> (${Number(r.Amount).toLocaleString()}円)<br>
-          <small>支払: ${r.Payer} / 対象: ${r.Participants}</small>
+          <small style="color:#555;">支払: ${r.Payer} ／ 対象: ${r.Participants}</small>
         </div>
         <button class="del-btn" onclick="deleteExpense('${r.ID}')">削除</button>
       </div>
-    `).join('') : '<p>記録がありません</p>';
+    `).join('') : '<p style="color:#666; font-size:0.9rem;">まだ記録がありません</p>';
 
-    // 精算ロジック（各人の収支バランス計算）
+    // 精算ロジック
     const balances = {};
     records.forEach(r => {
       const amount = Number(r.Amount);
@@ -213,7 +339,6 @@
       });
     });
 
-    // 受取側(プラス)と支払側(マイナス)に分離してマッチング
     let debtors = [], creditors = [];
     for (const [person, bal] of Object.entries(balances)) {
       if (bal < -1) debtors.push({ person, amount: -bal });
@@ -227,7 +352,7 @@
     let i = 0, j = 0;
     while (i < debtors.length && j < creditors.length) {
       const pay = Math.min(debtors[i].amount, creditors[j].amount);
-      settlements.push(`${debtors[i].person} → ${creditors[j].person} に <strong>${Math.round(pay).toLocaleString()}円</strong> 支払う`);
+      settlements.push(`${debtors[i].person} → ${creditors[j].person} に <strong>${Math.round(pay).toLocaleString()}円</strong>`);
       debtors[i].amount -= pay;
       creditors[j].amount -= pay;
       if (debtors[i].amount < 1) i++;
@@ -237,7 +362,7 @@
     const settlementEl = document.getElementById('settlementList');
     settlementEl.innerHTML = settlements.length
       ? settlements.map(s => `<div class="settlement-item">${s}</div>`).join('')
-      : '<p>精算は完了しています（またはデータがありません）</p>';
+      : '<p style="color:#666; font-size:0.9rem;">精算は完了しています（またはデータがありません）</p>';
   }
 </script>
 </body>
