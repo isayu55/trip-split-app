@@ -412,7 +412,7 @@
     container.appendChild(row);
   }
 
-  async function handleReceiptUpload(event) {
+    async function handleReceiptUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -435,6 +435,11 @@
         if (result.item) document.getElementById('itemInput').value = result.item;
         if (result.amount) document.getElementById('amountInput').value = result.amount;
 
+        // 通貨の自動切り替え（PHPならペソモードにする）
+        const curSel = document.getElementById('currencySelect');
+        curSel.value = (result.currency === 'PHP') ? 'PHP' : 'JPY';
+        onCurrencyChange();
+
         if (Array.isArray(result.items) && result.items.length > 0) {
           document.getElementById('lineItemsContainer').innerHTML = '';
           result.items.forEach(it => addLineItemRow(it.name || '', it.price || ''));
@@ -448,6 +453,7 @@
       event.target.value = '';
     }
   }
+
 
   function resizeImageToBase64(file, maxSide) {
     return new Promise((resolve, reject) => {
@@ -605,7 +611,10 @@
     const tripName = document.getElementById('tripSelect').value;
     const payer = document.getElementById('payerSelect').value;
     const baseItem = document.getElementById('itemInput').value.trim();
-    const totalAmount = Number(document.getElementById('amountInput').value);
+    const rawTotalAmount = Number(document.getElementById('amountInput').value);
+    const currency = document.getElementById('currencySelect').value;
+    const rate = currency === 'PHP' ? (Number(document.getElementById('phpRateInput').value) || 2.65) : 1;
+    const totalAmountJpy = Math.round(rawTotalAmount * rate);
 
     if (!tripName || !payer) {
       alert('先に「＋ 新規 / メンバー編集」から旅行とメンバーを登録してください');
@@ -618,13 +627,14 @@
     if (!isItemizedMode) {
       const checkedBoxes = [...document.querySelectorAll('input[name="participant"]:checked')];
       const participants = checkedBoxes.map(b => b.value).join(',');
-      if (!baseItem || !totalAmount || !participants) {
+      if (!baseItem || !rawTotalAmount || !participants) {
         alert('内容・金額・対象者（1人以上）を入力してください');
         return;
       }
+      const itemLabel = currency === 'PHP' ? `${baseItem} (${rawTotalAmount.toLocaleString()} PHP)` : baseItem;
       payloadsToSend.push({
         pass: appPass, action: 'add', tripName, date: today,
-        payer, item: baseItem, amount: totalAmount, participants
+        payer, item: itemLabel, amount: totalAmountJpy, participants
       });
     } else {
       const cards = [...document.querySelectorAll('.line-item-card')];
@@ -646,22 +656,23 @@
       }
 
       const rawSum = lineItems.reduce((sum, it) => sum + it.price, 0);
-      const targetTotal = totalAmount > 0 ? totalAmount : rawSum;
-      const ratio = rawSum > 0 ? (targetTotal / rawSum) : 1;
+      const targetTotalJpy = rawTotalAmount > 0 ? totalAmountJpy : Math.round(rawSum * rate);
+      const ratio = rawSum > 0 ? (targetTotalJpy / rawSum) : rate;
 
       let allocatedSum = 0;
       lineItems.forEach((it, idx) => {
-        let adjustedPrice;
+        let adjustedPriceJpy;
         if (idx === lineItems.length - 1) {
-          adjustedPrice = Math.round(targetTotal - allocatedSum);
+          adjustedPriceJpy = Math.round(targetTotalJpy - allocatedSum);
         } else {
-          adjustedPrice = Math.round(it.price * ratio);
-          allocatedSum += adjustedPrice;
+          adjustedPriceJpy = Math.round(it.price * ratio);
+          allocatedSum += adjustedPriceJpy;
         }
-        const label = baseItem ? `${baseItem}（${it.name}）` : it.name;
+        const phpNote = currency === 'PHP' ? ` ${it.price}PHP` : '';
+        const label = baseItem ? `${baseItem}（${it.name}${phpNote}）` : `${it.name}${phpNote}`;
         payloadsToSend.push({
           pass: appPass, action: 'add', tripName, date: today,
-          payer, item: label, amount: adjustedPrice, participants: it.targets.join(',')
+          payer, item: label, amount: adjustedPriceJpy, participants: it.targets.join(',')
         });
       });
     }
@@ -687,6 +698,7 @@
       document.getElementById('itemInput').value = '';
       document.getElementById('amountInput').value = '';
       document.getElementById('lineItemsContainer').innerHTML = '';
+      updateJpyPreview();
       if (isItemizedMode) toggleItemizedMode(false);
       document.querySelectorAll('input[name="participant"]').forEach(b => b.checked = true);
       await fetchData();
@@ -697,6 +709,7 @@
       btn.innerText = 'スプレッドシートに保存';
     }
   }
+
 
   // ===== 支払い履歴の編集 =====
   function openEditModal(id) {
@@ -1084,6 +1097,28 @@
       `).join('');
     }
   }
+
+    function onCurrencyChange() {
+    const currency = document.getElementById('currencySelect').value;
+    document.getElementById('phpRateBox').style.display = currency === 'PHP' ? 'block' : 'none';
+    updateJpyPreview();
+  }
+
+  function savePhpRate() {
+    const rate = document.getElementById('phpRateInput').value;
+    if (rate) localStorage.setItem('trip_php_rate', rate);
+    updateJpyPreview();
+  }
+
+  function updateJpyPreview() {
+    const currency = document.getElementById('currencySelect').value;
+    if (currency !== 'PHP') return;
+    const raw = Number(document.getElementById('amountInput').value) || 0;
+    const rate = Number(document.getElementById('phpRateInput').value) || 2.65;
+    const jpy = Math.round(raw * rate);
+    document.getElementById('jpyPreview').innerText = `換算額: 約 ${jpy.toLocaleString()}円（保存時は日本円で記録）`;
+  }
+
 </script>
 </body>
 </html>
